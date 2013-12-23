@@ -39,6 +39,7 @@ struct _GgitCommitPrivate
 {
 	gchar *message_utf8;
 	gchar *subject_utf8;
+	gchar *message_body_utf8;
 };
 
 G_DEFINE_TYPE (GgitCommit, ggit_commit, GGIT_TYPE_OBJECT)
@@ -105,6 +106,7 @@ ggit_commit_finalize (GObject *object)
 
 	g_free (commit->priv->message_utf8);
 	g_free (commit->priv->subject_utf8);
+	g_free (commit->priv->message_body_utf8);
 
 	G_OBJECT_CLASS (ggit_commit_parent_class)->finalize (object);
 }
@@ -207,6 +209,12 @@ ensure_message_utf8 (GgitCommit *commit)
 	{
 		commit->priv->subject_utf8 = g_strndup (commit->priv->message_utf8,
 		                                        ptr - commit->priv->message_utf8);
+		if (ptr[1] != '\0')
+		{
+			int i = 1;
+			while(ptr[i] == '\n' && ptr[++i] != '\0');
+			commit->priv->message_body_utf8 = ptr + i;
+		}
 	}
 }
 
@@ -254,6 +262,34 @@ ggit_commit_get_subject (GgitCommit *commit)
 	{
 		return commit->priv->message_utf8;
 	}
+}
+
+/**
+ * ggit_commit_get_message_body:
+ * @commit: a #GgitCommit.
+ *
+ * Gets the message body of @commit. The body of a commit message is
+ * the rest of the message except the first line (as per convention).
+ * The resulting subject (if not NULL) is always encoded in UTF-8.
+ *
+ * Returns: the body of the commit.
+ */
+const gchar *
+ggit_commit_get_message_body (GgitCommit *commit)
+{
+	g_return_val_if_fail (GGIT_IS_COMMIT (commit), NULL);
+
+	ensure_message_utf8 (commit);
+
+	if (commit->priv->message_body_utf8)
+	{
+		return commit->priv->message_body_utf8;
+	}
+	else
+	{
+		return NULL;
+	}
+
 }
 
 /**
